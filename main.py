@@ -22,6 +22,7 @@ driver = webdriver.Chrome(executable_path=driver_path)
 # product = input()
 product = "lenova laptop"
 
+## Hepsiburada
 driver.get("https://www.hepsiburada.com")
 search = driver.find_element_by_xpath("//*[@id='SearchBoxOld']/div/div/div[1]/div[2]/input")
 search.send_keys(product)
@@ -35,5 +36,6 @@ productList = driver.find_element_by_class_name("product-list results-container 
 # product3 = driver.find_element_by_xpath("//*[@id='6f68548b-5874-4a1e-bf9f-e6b584c16368']/div/div/ul/li[3]/div/a/div[2]/h3/div/p/span").text
 
 
-# sayfada geri gitme
-# driver.back()
+
+## gittigidiyor
+driver.get("https://www.gittigidiyor.com")
