@@ -38,7 +38,7 @@ class pcGittiGidiyor:
                         price = parsed.cssselect(".lastPrice")[0].text.replace("\n","").replace(" ","").replace("TL","").replace(".","").replace(",",".")
                         product["price"] = float(price)
                         product["comments"] = list()
-                        commentLink = product["url"].split("tx_")[0]+"tx"+self.commentAdd
+                        commentLink = product["url"].split("_spp")[0]+self.commentAdd
                         response = requests.get(commentLink, headers=self.header)
                         if response.status_code == 200:
                             parsed = parser.document_fromstring(response.text)
