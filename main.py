@@ -1,6 +1,8 @@
 from sentimentAnalysis import SentimentAnalysis
 from pcHepsiBurada import pcHepsiBurada
 from pcGittiGidiyor import pcGittiGidiyor
+import pprint
+
 
 
 sentA = SentimentAnalysis()
@@ -9,7 +11,7 @@ driver_path = "chromedriver.exe"
 
 
 
-search = "lenovo laptop"
+search = input("What are you looking for? \n")
 
 products = dict()
 # {
@@ -34,7 +36,7 @@ for id,product in products.items():
     del product["comments"]
 
 #Sorting with price and rating
-products = sorted(products.items(), key = lambda x: (x[1]['price'], x[1]['rating']), reverse=True)
+products = sorted(products.items(), key = lambda x: (x[1]['price'], x[1]['rating']))
 
-print(products)
+pprint.pprint(products)
 
