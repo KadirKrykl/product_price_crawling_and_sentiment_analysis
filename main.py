@@ -28,10 +28,12 @@ products.update(hepsiburada.getProducts(search))
 gittigidiyor = pcGittiGidiyor()
 products.update(gittigidiyor.getProducts(search))
 
+#Transform comments to ratings with sentiment analysis
 for id,product in products.items():
     product["rating"] = sentA.analysis(product["comments"])
     del product["comments"]
 
+#Sorting with price and rating
 products = sorted(products.items(), key = lambda x: (x[1]['price'], x[1]['rating']), reverse=True)
 
 print(products)
