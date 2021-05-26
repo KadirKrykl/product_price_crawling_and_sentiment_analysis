@@ -1,57 +1,49 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver import ActionChains
+import requests
+import lxml.html as parser
+import lxml.cssselect
 import time
 
 
 
 class pcGittiGidiyor:
-    driver = ""
-    def __init__(self,driver):
-        self.driver = driver
+    root = "https://www.gittigidiyor.com"
+    searchUrl = "https://www.gittigidiyor.com/arama/?k="
+    header = {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"}
+    commentAdd = "/yorumlari"
+    def __init__(self):
+        ...
+
+    def keyPreProcess(self,key):
+        return key.replace(" ","+")
 
     def getProducts(self,key):
         products = dict()
-        try:
-            self.driver.get("https://www.gittigidiyor.com/")
-            search = self.driver.find_element_by_name("k")
-            search.send_keys(key)
-            self.driver.find_element_by_xpath("//*[@id='main-header']/div[3]/div/div/div/div[2]/form/div/div[2]/button/span").click()
-
-            element = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "catalog-seem-cell"))
-                )
-            idx = 0
-            productList = self.driver.find_elements_by_class_name("catalog-seem-cell")
-            while len(products) < 3 and idx < len(productList):
-                try:
-                    item = productList[idx].find_element_by_class_name("catalog-review-title")
-                    products["g{0}".format(idx)] = {"link":productList[idx].find_element_by_tag_name("a").get_attribute('href')}
-                except:
-                    ...
-                finally:
+        key = self.keyPreProcess(key)
+        pageUrl = self.searchUrl + key
+        response = requests.get(pageUrl, headers=self.header)
+        if response.status_code == 200:
+            parsed = parser.document_fromstring(response.text)
+            items = parsed.find_class("catalog-seem-cell")
+            if len(items) > 0:
+                idx = 0
+                while len(products) < 3 and idx < len(items):
+                    a = items[idx].cssselect("a")
+                    products["g{0}".format(idx)] = {"url" : items[idx].cssselect("a")[0].attrib["href"]}
                     idx += 1
-            
-            for id, product in products.items():
-                self.driver.get(product["link"])
-                product["name"] = self.driver.find_element_by_css_selector("#sp-title").text
-                product["price"] = int(self.driver.find_element_by_css_selector(".lastPrice").text.split(",")[0].replace(".",""))
-                self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                self.driver.find_element_by_css_selector(".see-all-catalog-review").click()
-                element = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "user-catalog-review"))
-                )
-                comments = self.driver.find_elements_by_css_selector(".user-catalog-review-comment-detail > p")
-                tempList = list()
-                for comment in comments:
-                    tempList.append(comment.text)
-                    print(comment.text)
-                product["comments"] = tempList
-                
-        except:
-            ...
-        
+                for id, product in products.items():
+                    response = requests.get(product["url"], headers=self.header)
+                    if response.status_code == 200:
+                        parsed = parser.document_fromstring(response.text)
+                        product["name"] = parsed.cssselect("#sp-title")[0].text
+                        price = parsed.cssselect(".lastPrice")[0].text.replace("\n","").replace(" ","").replace("TL","").replace(".","").replace(",",".")
+                        product["price"] = float(price)
+                        product["comments"] = list()
+                        commentLink = product["url"].split("tx_")[0]+"tx"+self.commentAdd
+                        response = requests.get(commentLink, headers=self.header)
+                        if response.status_code == 200:
+                            parsed = parser.document_fromstring(response.text)
+                            comments = parsed.cssselect(".user-catalog-review-comment-detail>p")
+                            for comment in comments:
+                                product["comments"].append(comment.text_content())
+
         return products

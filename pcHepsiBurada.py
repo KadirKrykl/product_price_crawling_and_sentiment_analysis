@@ -1,57 +1,50 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver import ActionChains
+import requests
+import lxml.html as parser
+import lxml.cssselect
 import time
 
 
 
 class pcHepsiBurada:
-    driver = ""
-    def __init__(self,driver):
-        self.driver = driver
+    root = "https://www.hepsiburada.com"
+    searchUrl = "https://www.hepsiburada.com/ara?q="
+    header = {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.212 Safari/537.36"}
+    commentAdd = "-yorumlari?sayfa=1"
+    def __init__(self):
+        ...
+
+    def keyPreProcess(self,key):
+        return key.replace(" ","+")
 
     def getProducts(self,key):
         products = dict()
-        try:
-            self.driver.get("https://www.hepsiburada.com")
-            search = self.driver.find_element_by_xpath("//*[@id='SearchBoxOld']/div/div/div[1]/div[2]/input")
-            search.send_keys(key)
-            self.driver.find_element_by_xpath("//*[@id='SearchBoxOld']/div/div/div[2]").click()
-
-            element = WebDriverWait(self.driver, 10).until(
-                    EC.presence_of_element_located((By.CLASS_NAME, "search-item"))
-                )
-            idx = 0
-            productList = self.driver.find_elements_by_class_name("search-item")
-            while len(products) < 3 and idx < len(productList):
-                try:
-                    item = productList[idx].find_element_by_class_name("ratings")
-                    products["h{0}".format(idx)] = {"link":productList[idx].find_element_by_tag_name("a").get_attribute('href')}
-                except:
-                    ...
-                finally:
+        key = self.keyPreProcess(key)
+        pageUrl = self.searchUrl + key
+        response = requests.get(pageUrl, headers=self.header)
+        if response.status_code == 200:
+            parsed = parser.document_fromstring(response.text)
+            items = parsed.find_class("search-item")
+            if len(items) > 0:
+                idx = 0
+                while len(products) < 3 and idx < len(items):
+                    rate = items[idx].find_class("ratings active")
+                    if len(rate) > 0:
+                        a = items[idx].cssselect("a")
+                        products["h{0}".format(idx)] = {"url" : self.root + items[idx].cssselect("a")[0].attrib["href"]}
                     idx += 1
-            
-            for id, product in products.items():
-                self.driver.get(product["link"])
-                product["name"] = self.driver.find_element_by_css_selector("#product-name").text
-                product["price"] = int(self.driver.find_element_by_css_selector("#offering-price > span:nth-child(1)").text.replace(".",""))
-                target = self.driver.find_element_by_css_selector("#productReviewsTab")
-                target.click()
-                a = ActionChains(self.driver)
-                a.move_to_element(target).perform()
-                self.driver.execute_script("window.scrollTo(0, {0});".format(target.location['y']))
-                comments = self.driver.find_elements_by_css_selector("span[itemprop='description']")
-                tempList = list()
-                for comment in comments:
-                    tempList.append(comment.text)
-                    print(comment.text)
-                product["comments"] = tempList
-                
-        except:
-            ...
+                for id, product in products.items():
+                    response = requests.get(product["url"], headers=self.header)
+                    if response.status_code == 200:
+                        parsed = parser.document_fromstring(response.text)
+                        n = parsed.cssselect("#product-name")[0]
+                        product["name"] = parsed.cssselect("#product-name")[0].text.replace("\r\n","").replace("  "," ")
+                        product["price"] = float(parsed.cssselect("#offering-price")[0].attrib["content"])
+                        product["comments"] = list()
+                        response = requests.get(product["url"]+self.commentAdd, headers=self.header)
+                        if response.status_code == 200:
+                            parsed = parser.document_fromstring(response.text)
+                            comments = parsed.cssselect("span[itemprop='description']")
+                            for comment in comments:
+                                product["comments"].append(comment.text)
         
         return products

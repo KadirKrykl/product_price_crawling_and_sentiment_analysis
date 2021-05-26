@@ -9,6 +9,12 @@ from sklearn.linear_model import LogisticRegression
 
 
 class SentimentAnalysis:
+    lower_map = {
+        ord(u'I'): u'ı',
+        ord(u'İ'): u'i',
+        ord(u'Ö'): u'ö',
+        ord(u'Ü'): u'ü',
+    }
     data = pd.read_csv("CreateTrainData/trainData.csv",sep=",",encoding ='utf-8')
     x = data['Yorum'].copy()
     y = data['Label'].values.reshape(-1,1)
@@ -23,14 +29,15 @@ class SentimentAnalysis:
         self.lr.fit(self.x_train_vectorized, self.y)
 
     def text_preprocess(self,text):
+        text = text.translate(self.lower_map).lower()
         text = text.translate(str.maketrans('', '', string.punctuation))
-        text = [word for word in text.split() if word.lower() not in stop_word_list]
+        text = [word for word in text.split() if word.lower() not in self.stop_word_list]
         return " ".join(text)
 
     def analysis(self,texts):
-        texts = np.array(texts)
-        texts = texts.apply(text_preprocess)
-        predictions = lr.predict(vect.transform(texts))
-        row, col = predictions.shape
-        row2, col2 = predictions[predictions == 1].shape
-        return ((col2 * 100) / col)
+        for text in texts:
+            text = self.text_preprocess(text)
+        predictions = self.lr.predict(self.vect.transform(texts))
+        size = predictions.shape[0]
+        size2 = predictions[predictions == 1].shape[0]
+        return ((size2 * 100) / size)
